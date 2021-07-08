@@ -21,7 +21,6 @@ import discord
 
 from discord.ext import commands
 from utils import AvimetryContext
-from twemoji_parser import emoji_to_url as urlify_emoji
 
 
 time_regex = re.compile(r"(?:(\d{1,5})\s?(h|s|m|d|w|y))+?")
@@ -195,14 +194,10 @@ class GetAvatar(commands.Converter):
         try:
             member_converter = commands.MemberConverter()
             member = await member_converter.convert(ctx, argument)
-            image = member.avatar_url_as(format="png", static_format="png", size=1024)
+            image = member.avatar.url.replace(format="png", static_format="png", size=1024)
             return str(image)
         except Exception:
             try:
-                url = await urlify_emoji(argument)
-                if re.match(regex_url, url):
-                    image = str(url)
-                    return image
                 if re.match(regex_url, argument):
                     image = argument
                     return image

@@ -70,7 +70,7 @@ class AvimetryHelp(commands.HelpCommand):
             return None
 
     def gending_note(self):
-        return f"Use {self.clean_prefix}{self.invoked_with} [command|module] for help on a command or module."
+        return f"Use {self.context.clean_prefix}{self.invoked_with} [command|module] for help on a command or module."
 
     def command_signature(self):
         return (
@@ -119,8 +119,8 @@ class AvimetryHelp(commands.HelpCommand):
             name="Modules",
             value=f"{joiner.join(modules_list)}", inline=False
         )
-        embed.set_footer(text=self.gending_note(), icon_url=str(self.context.author.avatar_url))
-        embed.set_thumbnail(url=str(self.context.bot.user.avatar_url))
+        embed.set_footer(text=self.gending_note(), icon_url=str(self.context.author.avatar.url))
+        embed.set_thumbnail(url=str(self.context.bot.user.avatar.url))
         await self.get_destination().send(embed=embed)
 
     async def send_cog_help(self, cog):
@@ -137,7 +137,7 @@ class AvimetryHelp(commands.HelpCommand):
             value=",\n".join(value) or "No commands.",
             inline=False,
         )
-        embed.set_thumbnail(url=str(self.context.bot.user.avatar_url))
+        embed.set_thumbnail(url=str(self.context.bot.user.avatar.url))
         embed.set_footer(text=self.gending_note())
         await self.get_destination().send(embed=embed)
 
@@ -147,7 +147,7 @@ class AvimetryHelp(commands.HelpCommand):
             description=f"{group.short_doc}" or "Description was not provided")
         embed.add_field(
             name="Base command usage",
-            value=f"`{self.clean_prefix}{group.qualified_name} {group.signature}`")
+            value=f"`{self.context.clean_prefix}{group.qualified_name} {group.signature}`")
         if group.aliases:
             embed.add_field(
                 name="Command Aliases",
@@ -183,7 +183,7 @@ class AvimetryHelp(commands.HelpCommand):
                 name=f"Subcommands for {group.qualified_name}",
                 value=",\n".join(value) or None,
                 inline=False)
-        embed.set_thumbnail(url=str(self.context.bot.user.avatar_url))
+        embed.set_thumbnail(url=str(self.context.bot.user.avatar.url))
         embed.set_footer(text=self.gending_note())
         await self.get_destination().send(embed=embed)
 
@@ -193,7 +193,7 @@ class AvimetryHelp(commands.HelpCommand):
 
         embed.add_field(
             name="Command Usage",
-            value=f"`{self.clean_prefix}{command.name} {command.signature}`")
+            value=f"`{self.context.clean_prefix}{command.name} {command.signature}`")
         if command.aliases:
             embed.add_field(
                 name="Command Aliases",
@@ -228,7 +228,7 @@ class AvimetryHelp(commands.HelpCommand):
             embed.add_field(
                 name="Cooldown",
                 value=cooldown)
-        embed.set_thumbnail(url=str(self.context.bot.user.avatar_url))
+        embed.set_thumbnail(url=str(self.context.bot.user.avatar.url))
         embed.set_footer(text=self.gending_note())
         await self.get_destination().send(embed=embed)
 

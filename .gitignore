@@ -5,3 +5,4 @@ obsidian.log
 .vscode
 config.toml
 pg_config.toml
+bot-env

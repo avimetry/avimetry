@@ -20,7 +20,6 @@ import asyncio
 import discord
 import datetime
 import contextlib
-import re
 
 from discord.ext import commands
 
@@ -36,15 +35,6 @@ class AvimetryContext(commands.Context):
     @property
     def cache(self):
         return self.bot.cache
-
-    @property
-    def clean_prefix(self):
-        prefix = re.sub(
-            f"<@!?{self.bot.user.id}>", f"@{self.me.display_name}", self.prefix
-        )
-        if prefix.endswith("  "):
-            prefix = f"{prefix.strip()} "
-        return prefix
 
     @property
     def content(self):
@@ -80,9 +70,9 @@ class AvimetryContext(commands.Context):
             if not embed.footer:
                 embed.set_footer(
                     text=f"Requested by: {self.author}",
-                    icon_url=str(self.author.avatar_url)
+                    icon_url=str(self.author.avatar.url)
                 )
-                embed.timestamp = datetime.datetime.utcnow()
+                embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             if not embed.color:
                 color = self.author.color
                 if self.author.color in [

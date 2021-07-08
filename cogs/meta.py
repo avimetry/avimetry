@@ -21,12 +21,12 @@ import aiohttp
 import discord
 import datetime
 import random
-import humanize
 import pytz
 import typing
 
 from discord.ext import commands
-from utils import AvimetryBot, AvimetryContext, TimeZoneError, GetAvatar, timestamp
+from discord.utils import format_dt as timestamp
+from utils import AvimetryBot, AvimetryContext, TimeZoneError, GetAvatar
 
 
 class Meta(commands.Cog):
@@ -130,7 +130,7 @@ class Meta(commands.Cog):
             pos = f"{sort.index(member) + 1}/{len(ctx.guild.members)}"
             ie.add_field(
                 name="Join Date",
-                value=f"{timestamp(member.joined_at)} ({timestamp(member.joined_at, 'R')})",
+                value=f"{timestamp(member.joined_at)} ({timestamp(member.joined_at, 'R')})\nJoin Position: {pos}",
                 inline=False,
             )
             ie.add_field(
@@ -158,7 +158,7 @@ class Meta(commands.Cog):
                     if val is True
                 ]
                 ie.add_field(name="Public Flags", value=", ".join(flags))
-        ie.set_thumbnail(url=member.avatar_url)
+        ie.set_thumbnail(url=member.avatar.url)
         await ctx.send(embed=ie)
 
     @commands.command()
@@ -168,7 +168,7 @@ class Meta(commands.Cog):
         embed = discord.Embed(
             title=f"{member}'s avatar"
         )
-        embed.set_image(url=str(member.avatar_url))
+        embed.set_image(url=str(member.avatar.url))
         await ctx.send(embed=embed)
 
     @commands.group(brief="Make a QR code", invoke_without_command=True)
@@ -199,7 +199,7 @@ class Meta(commands.Cog):
         format_time = time.strftime("%A, %B %d at %I:%M %p")
         time_embed = discord.Embed(description=format_time)
         time_embed.set_author(
-            name=f"{member.display_name}'s time", icon_url=member.avatar_url
+            name=f"{member.display_name}'s time", icon_url=member.avatar.url
         )
         time_embed.set_footer(text=f"{member.display_name}'s' timezone: {timezone}")
         await ctx.send(embed=time_embed)

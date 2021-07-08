@@ -29,11 +29,11 @@ class Setup(commands.Cog):
         self.webhooks = self.bot.settings["webhooks"]
         self.guild_webhook = discord.Webhook.from_url(
             self.webhooks["join_log"],
-            adapter=discord.AsyncWebhookAdapter(self.bot.session)
+            session=self.bot.session
         )
         self.command_webhook = discord.Webhook.from_url(
             self.webhooks["command_log"],
-            adapter=discord.AsyncWebhookAdapter(self.bot.session)
+            session=self.bot.session
         )
 
     @commands.Cog.listener()
@@ -89,7 +89,7 @@ class Setup(commands.Cog):
             ),
             color=ctx.author.color
         )
-        embed.set_author(name=ctx.author, icon_url=str(ctx.author.avatar_url_as(format="png", size=512)))
+        embed.set_author(name=ctx.author, icon_url=str(ctx.author.avatar.url.replace(format="png", size=512)))
         embed.timestamp = datetime.datetime.utcnow()
         await self.command_webhook.send(embed=embed)
         if ctx.guild.chunked:

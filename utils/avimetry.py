@@ -101,7 +101,7 @@ class AvimetryBot(commands.AutoShardedBot):
     def __init__(self, **kwargs):
         super().__init__(
             **kwargs,
-            command_prefix=get_prefix,
+            command_prefix='a2.',
             case_insensitive=True,
             allowed_mentions=allowed_mentions,
             activity=activity,
@@ -119,7 +119,7 @@ class AvimetryBot(commands.AutoShardedBot):
         self.command_usage = {}
         self.command_cache = {}
         self.cache = AvimetryCache(self)
-        self.invite = str(discord.utils.oauth_url(PUBLIC_BOT_ID, discord.Permissions(8)))
+        self.invite = str(discord.utils.oauth_url(PUBLIC_BOT_ID, permissions=discord.Permissions(8)))
         self.emoji_dictionary = {
             "red_tick": '<:redtick:777096756865269760>',
             "green_tick": '<:greentick:777096731438874634>',
@@ -148,7 +148,6 @@ class AvimetryBot(commands.AutoShardedBot):
             "cogs.joinsandleaves",
             "cogs.meta",
             "cogs.moderation",
-            "cogs.roblox",
             "cogs.servermanagement",
             "cogs.settings",
             # "cogs.music",

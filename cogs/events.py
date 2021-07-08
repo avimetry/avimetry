@@ -77,7 +77,7 @@ class BotLogs(commands.Cog):
                 color=discord.Color.red(),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+            embed.set_author(name=message.author, icon_url=message.author.avatar.url)
             mentions = discord.AllowedMentions.all()
             try:
                 await message.reply(embed=embed, allowed_mentions=mentions, mention_author=True)
@@ -114,7 +114,7 @@ class BotLogs(commands.Cog):
             ):
                 embed.set_footer(
                     text=f"Deleted by {deleted_by.user}",
-                    icon_url=deleted_by.user.avatar_url,
+                    icon_url=deleted_by.user.avatar.url,
                 )
         channel_id = thing["channel_id"]
         channel = discord.utils.get(message.guild.channels, id=channel_id)
@@ -147,7 +147,7 @@ class BotLogs(commands.Cog):
         channel_id = thing["channel_id"]
         channel = discord.utils.get(before.guild.channels, id=channel_id)
         await channel.send(embed=embed)
-    
+
     # @commands.Cog.listener("on_member_ban")
     # async def on_member_ban(self, guild: discord.Guild, user: discord.User):
     #     entry = (await guild.audit_logs(limit=1, action=discord.AuditLogAction.ban).flatten())[0]

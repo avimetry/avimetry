@@ -20,7 +20,6 @@ import discord
 import typing
 from discord.ext import commands
 from asyncdagpi import ImageFeatures, Image
-from twemoji_parser import emoji_to_url
 from utils import AvimetryBot, AvimetryContext, GetAvatar
 
 embed = discord.Embed()
@@ -42,7 +41,7 @@ class Image(commands.Cog, name="Images"):
                 img = ctx.message.attachments[0]
                 image = img.url
             else:
-                image = str(ctx.author.avatar_url_as(format="png", static_format="png", size=1024))
+                image = str(ctx.author.avatar.url.replace(format="png", static_format="png", size=1024))
         async with ctx.channel.typing():
             image = await self.bot.dagpi.image_process(feature, image)
         return image
@@ -307,11 +306,11 @@ class Image(commands.Cog, name="Images"):
     async def dag_youtube(self, ctx, user: discord.Member = None, *, text: str = None):
         user_name = None
         if text is None:
-            url = str(ctx.author.avatar_url_as(format="png", static_format="png", size=1024))
+            url = str(ctx.author.avatar.url.replace(format="png", static_format="png", size=1024))
             text = "I am an idiot for not putting the text in"
             user_name = ctx.author.name
         else:
-            url = str(user.avatar_url_as(format="png", static_format="png", size=1024))
+            url = str(user.avatar.url.replace(format="png", static_format="png", size=1024))
         async with ctx.channel.typing():
             image = await self.bot.dagpi.image_process(
                 ImageFeatures.youtube(), text=text, url=url,
@@ -323,11 +322,11 @@ class Image(commands.Cog, name="Images"):
     async def dag_discord(self, ctx, user: discord.User = None, *, text: str = None):
         user_name = None
         if text is None:
-            url = str(ctx.author.avatar_url_as(format="png", static_format="png", size=1024))
+            url = str(ctx.author.avatar.url.replace(format="png", static_format="png", size=1024))
             text = "I am an idiot for not putting the text in"
             user_name = ctx.author.name
         else:
-            url = str(user.avatar_url_as(format="png", static_format="png", size=1024))
+            url = str(user.avatar.url.replace(format="png", static_format="png", size=1024))
         async with ctx.channel.typing():
             image = await self.bot.dagpi.image_process(
                 ImageFeatures.discord(), text=text, url=url,
@@ -340,11 +339,6 @@ class Image(commands.Cog, name="Images"):
         async with ctx.channel.typing():
             image = await self.bot.dagpi.image_process(ImageFeatures.captcha(), item, text=text)
         await self.dag_embed(ctx, image, ctx.command.name)
-
-    @commands.command(brief="Convert emoji to url so you can download them")
-    async def emojiurl(self, ctx: AvimetryContext, emoji):
-        result = await emoji_to_url(emoji)
-        await ctx.send(result)
 
 
 def setup(bot):

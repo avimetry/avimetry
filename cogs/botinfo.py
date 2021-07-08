@@ -77,7 +77,7 @@ class BotInfo(commands.Cog, name="Bot Info"):
         embed.add_field(name="Commands", value=f"{len(self.bot.commands)} loaded")
         embed.add_field(name="Commands ran", value=self.bot.commands_ran)
         embed.add_field(name="Credits", value=f"{avatar} (Avatar),\n{help_command} (Help Command)\n{tester} (Tester)")
-        embed.set_thumbnail(url=ctx.me.avatar_url)
+        embed.set_thumbnail(url=ctx.me.avatar.url)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -234,7 +234,7 @@ class BotInfo(commands.Cog, name="Bot Info"):
     async def source(self, ctx: AvimetryContext, *, command: str = None):
         source_embed = discord.Embed(
                 title=f"{self.bot.user.name}'s source",
-                timestamp=datetime.datetime.utcnow()
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
             )
         git_link = "https://github.com/avimetry/avimetry/blob/master/"
         license_link = "https://github.com/avimetry/avimetry/blob/master/LICENSE"

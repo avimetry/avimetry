@@ -34,7 +34,7 @@ class ErrorHandler(commands.Cog):
         self.cd_mapping = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)
         self.error_webhook = discord.Webhook.from_url(
             self.bot.settings["webhooks"]["error_log"],
-            adapter=discord.AsyncWebhookAdapter(self.bot.session),
+            session=self.bot.session
         )
 
     def reset(self, ctx: AvimetryContext):

@@ -19,14 +19,147 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 import random
 import asyncio
-import akinator
 import typing
 
 from aiogtts import aiogTTS
 from io import BytesIO
 from discord.ext import commands
 from akinator.async_aki import Akinator
+from akinator import CantGoBackAnyFurther
 from utils import AvimetryBot, AvimetryContext, Timer
+
+
+class AkinatorGameView(discord.ui.View):
+    def __init__(self, timeout=20, *, ctx, akiclient, member, embed):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+        self.akiclient = akiclient
+        self.member = member
+        self.embed = embed
+
+    async def interaction_check(self, interaction):
+        if interaction.user == self.member:
+            return True
+        else:
+            await interaction.response.send_message(f'Only {self.member.mention} can play this.', ephemeral=True)
+
+    async def answer(self, interaction, answer):
+        if answer == 'stop':
+            await self.akiclient.win()
+            self.embed.description = 'Game stopped.'
+            await interaction.response.edit_message(embed=self.embed, view=None)
+            self.stop()
+        elif answer == 'back':
+            try:
+                next = await self.akiclient.back()
+                self.embed.description = f'{self.akiclient.step+1}. {next}'
+                await interaction.response.edit_message(embed=self.embed)
+            except CantGoBackAnyFurther:
+                await interaction.response.send_message('You can not go back any further.', ephemeral=True)
+        elif self.akiclient.progression <= 80:
+            next = await self.akiclient.answer(answer)
+            self.embed.description = f'{self.akiclient.step+1}. {next}'
+            await interaction.response.edit_message(embed=self.embed)
+        else:
+            await self.akiclient.win()
+            client = self.akiclient
+            embed = discord.Embed(
+                title='Akinator',
+                description=(
+                    f'I think you are thinking of {client.first_guess["name"]} ({client.first_guess["description"]}).\n'
+                )
+            )
+            embed.set_image(url=client.first_guess["absolute_picture_path"])
+            await interaction.response.edit_message(embed=embed, view=None)
+            self.stop()
+
+    @discord.ui.button(label='Yes', style=discord.ButtonStyle.success, row=1)
+    async def game_yes(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'yes')
+
+    @discord.ui.button(label='No', style=discord.ButtonStyle.danger, row=1)
+    async def game_no(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'no')
+
+    @discord.ui.button(label='I dont know', style=discord.ButtonStyle.primary, row=1)
+    async def game_idk(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'i dont know')
+
+    @discord.ui.button(label='Probably', style=discord.ButtonStyle.secondary, row=2)
+    async def game_probably(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'probably')
+
+    @discord.ui.button(label='Probably Not', style=discord.ButtonStyle.secondary, row=2)
+    async def game_probably_not(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'probably not')
+
+    @discord.ui.button(label='Back', style=discord.ButtonStyle.secondary, row=3)
+    async def game_back(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'back')
+
+    @discord.ui.button(label='Stop', style=discord.ButtonStyle.danger, row=3)
+    async def game_stop(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(interaction, 'stop')
+
+
+class RockPaperScissorGame(discord.ui.View):
+    def __init__(self, timeout=20, *, ctx, member, embed):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+        self.member = member
+        self.embed = embed
+
+    async def interaction_check(self, interaction):
+        if interaction.user == self.member:
+            return True
+        else:
+            await interaction.response.send_message(f'Only {self.member.mention} can play this.', ephemeral=True)
+
+    async def answer(self, button, interaction, answer):
+        game = {0: "**Rock**", 1: "**Paper**", 2: "**Scissors**"}
+        key = [
+            [0, 1, -1],
+            [-1, 0, 1],
+            [1, -1, 0]
+        ]
+        repsonses = {
+            0: "**It's a tie!**",
+            1: "**You win!**",
+            -1: "**I win!**"
+        }
+        me = random.randint(0, 2)
+        message = repsonses[key[me][answer]]
+        thing = f"You chose: {game[answer]}\nI chose: {game[me]}.\n{message}"
+        button.style = discord.ButtonStyle.red if message == repsonses[-1] else discord.ButtonStyle.green
+        for i in self.children:
+            i.disabled = True
+        self.embed.description = thing
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+    @discord.ui.button(label='Rock', emoji='\U0001faa8', style=discord.ButtonStyle.secondary, row=1)
+    async def game_rock(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(button, interaction, 0)
+        button.style = discord.ButtonStyle.success
+
+    @discord.ui.button(label='Paper', emoji='\U0001f4f0', style=discord.ButtonStyle.secondary, row=1)
+    async def game_paper(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(button, interaction, 1)
+        button.style = discord.ButtonStyle.success
+
+    @discord.ui.button(label='Scissors', emoji='\U00002702\U0000fe0f', style=discord.ButtonStyle.secondary, row=1)
+    async def game_scissors(self, button: discord.Button, interaction: discord.Interaction):
+        await self.answer(button, interaction, 2)
+        button.style = discord.ButtonStyle.success
+
+
+class Things(commands.FlagConverter):
+    mode: str = 'en'
+    child: bool = True
+
+
+class TestFlags(commands.FlagConverter, prefix='--', delimiter=' '):
+    size: int = 512
+    format: str = 'png'
 
 
 class Fun(commands.Cog):
@@ -136,10 +269,10 @@ class Fun(commands.Cog):
         if not avimetry_webhook:
             avimetry_webhook = await ctx.channel.create_webhook(
                 name="Avimetry", reason="For Avimetry copy command.",
-                avatar=await self.bot.user.avatar_url.read())
+                avatar=await self.bot.user.avatar.read())
         await avimetry_webhook.send(
             text, username=member.display_name,
-            avatar_url=member.avatar_url_as(format="png"),
+            avatar_url=member.avatar.url.replace(format="png"),
             allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(
@@ -243,135 +376,27 @@ class Fun(commands.Cog):
             return
         await message.clear_reactions()
 
-    @commands.command(
-        name="akinator",
-        aliases=["aki", "avinator"],
-        brief="Play a game of akinator.")
-    @commands.cooldown(1, 60, commands.BucketType.member)
-    @commands.max_concurrency(1, commands.BucketType.channel)
-    @commands.bot_has_permissions(add_reactions=True)
-    async def fun_akinator(self, ctx: AvimetryContext, mode="en"):
-        ended = False
-        bot_perm = ctx.me.permissions_in(ctx.channel)
-        perms = True if bot_perm.manage_messages is True else False
-        aki_dict = {
-            "<:greentick:777096731438874634>": "yes",
-            "<:redtick:777096756865269760>": "no",
-            "\U0001f937": "idk",
-            "\U0001f914": "probably",
-            "\U0001f614": "probably not",
-            "<:Back:815854941083664454>": "back",
-            "<:Stop:815859174667452426>": "stop"
-        }
-        aki_react = list(aki_dict)
-        aki_client = Akinator()
-        akinator_embed = discord.Embed(
-            title="Akinator",
-            description="Starting Game..."
-        )
+    @commands.command()
+    async def rps(self, ctx: AvimetryContext):
+        embed = discord.Embed(title='Rock Paper Scissors', description='Who will win?')
+        await ctx.send(embed=embed, view=RockPaperScissorGame(timeout=20, ctx=ctx, member=ctx.author, embed=embed))
+
+    @commands.command(aliases=['aki'])
+    async def akinator(self, ctx: AvimetryContext, *, flags: Things):
+        akiclient = Akinator()
         async with ctx.channel.typing():
-            initial_messsage = await ctx.send(embed=akinator_embed)
-            for reaction in aki_react:
-                await initial_messsage.add_reaction(reaction)
-            game = await aki_client.start_game(mode)
+            game = await akiclient.start_game(language=flags.mode, child_mode=flags.child)
+            if akiclient.child_mode is False and ctx.channel.nsfw is False:
+                return await ctx.send('Child mode can only be disabled in NSFW channels.')
+            embed = discord.Embed(title='Akinator', description=f'{akiclient.step+1}. {game}')
+        view = AkinatorGameView(ctx=ctx, akiclient=akiclient, member=ctx.author, embed=embed)
+        await ctx.send(embed=embed, view=view)
 
-        while aki_client.progression <= 80:
-            akinator_embed.description = game
-            await initial_messsage.edit(embed=akinator_embed)
-
-            def check(reaction, user):
-                return (
-                    reaction.message.id == initial_messsage.id and
-                    str(reaction.emoji) in aki_react and
-                    user == ctx.author and
-                    user != self.bot.user
-                )
-
-            done, pending = await asyncio.wait([
-                self.bot.wait_for("reaction_remove", check=check, timeout=20),
-                self.bot.wait_for("reaction_add", check=check, timeout=20)
-            ], return_when=asyncio.FIRST_COMPLETED)
-
-            try:
-                reaction, user = done.pop().result()
-
-            except asyncio.TimeoutError:
-                await self.clear(initial_messsage, perms)
-                akinator_embed.description = (
-                    "Akinator session closed because you took too long to answer."
-                )
-                ended = True
-
-                await initial_messsage.edit(embed=akinator_embed)
-                break
-            else:
-                ans = aki_dict[str(reaction.emoji)]
-                if ans == "stop":
-                    ended = True
-                    akinator_embed.description = "Akinator session stopped."
-                    await initial_messsage.edit(embed=akinator_embed)
-                    await self.clear(initial_messsage, perms)
-                    break
-                elif ans == "back":
-                    try:
-                        game = await aki_client.back()
-                    except akinator.CantGoBackAnyFurther:
-                        pass
-                else:
-                    answer = ans
-
-            finally:
-                for future in done:
-                    future.exception()
-                for future in pending:
-                    future.cancel()
-
-            await self.remove(initial_messsage, reaction.emoji, user, perms)
-            game = await aki_client.answer(answer)
-        try:
-            await initial_messsage.clear_reactions()
-        except discord.Forbidden:
-            if ended:
-                return
-            await initial_messsage.delete()
-            initial_messsage = await ctx.send("...")
-        if ended:
-            return
-        await aki_client.win()
-
-        akinator_embed.description = (
-            f"I think it is {aki_client.first_guess['name']} ({aki_client.first_guess['description']})! Was I correct?"
-        )
-        akinator_embed.set_image(url=f"{aki_client.first_guess['absolute_picture_path']}")
-        await initial_messsage.edit(embed=akinator_embed)
-        reactions = ["<:greentick:777096731438874634>", "<:redtick:777096756865269760>"]
-        for reaction in reactions:
-            await initial_messsage.add_reaction(reaction)
-
-        def yes_no_check(reaction, user):
-            return (
-                reaction.message.id == initial_messsage.id and
-                str(reaction.emoji) in ["<:greentick:777096731438874634>", "<:redtick:777096756865269760>"] and
-                user != self.bot.user and
-                user == ctx.author
-            )
-        try:
-            reaction, user = await self.bot.wait_for(
-                "reaction_add", check=yes_no_check, timeout=60
-            )
-        except asyncio.TimeoutError:
-            await self.clear(initial_messsage, perms)
-        else:
-            await self.clear(initial_messsage, perms)
-            if str(reaction.emoji) == "<:greentick:777096731438874634>":
-                akinator_embed.description = (
-                    f"{akinator_embed.description}\n\n------\n\nYay!"
-                )
-            if str(reaction.emoji) == "<:redtick:777096756865269760>":
-                akinator_embed.description = (
-                    f"{akinator_embed.description}\n\n------\n\nAww, maybe next time."
-                )
-            await initial_messsage.edit(embed=akinator_embed)
+    @commands.command()
+    async def avatar2(self, ctx: AvimetryContext, member: discord.Member, *, flags: TestFlags):
+        member = member or ctx.author
+        av = member.avatar.replace(size=flags.size, format=flags.format)
+        await ctx.send(av)
 
     @commands.command(
         brief="Check if a person is compatible with another person."
@@ -607,6 +632,8 @@ class Fun(commands.Cog):
     async def gayrate(self, ctx: AvimetryContext, member: discord.Member = None):
         if member is None:
             member = ctx.author
+        elif member.id in self.bot.user.id:
+            return await ctx.send("My owners are not gay.")
         return await ctx.send(f"{member.mention} is **{random.randint(10, 100)}%** gay :rainbow:")
 
     @commands.command()

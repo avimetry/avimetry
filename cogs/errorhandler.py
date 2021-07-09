@@ -128,7 +128,7 @@ class ErrorHandler(commands.Cog):
             return await ctx.send(embed=max_uses)
 
         elif isinstance(error, commands.BotMissingPermissions):
-            missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_perms]
+            missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_permissions]
 
             if len(missing) > 2:
                 fmt = '{}, and {}'.format(", ".join(missing[:-1]), missing[-1])
@@ -142,7 +142,7 @@ class ErrorHandler(commands.Cog):
             return await ctx.send(embed=bnp)
 
         elif isinstance(error, commands.MissingPermissions):
-            missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_perms]
+            missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_permissions]
 
             if len(missing) > 2:
                 fmt = '{}, and `{}`'.format(", ".join(missing[:-1]), missing[-1])

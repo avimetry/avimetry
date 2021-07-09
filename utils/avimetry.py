@@ -253,7 +253,7 @@ class AvimetryBot(commands.AutoShardedBot):
     def run(self):
         tokens = self.settings["bot_tokens"]
         if platform not in ["linux", "linux2"]:
-            token = tokens["AvimetryBeta"]
+            token = tokens["AvimetryII"]
         else:
             token = tokens["Avimetry"]
         super().run(token, reconnect=True)

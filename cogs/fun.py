@@ -130,11 +130,17 @@ class RockPaperScissorGame(discord.ui.View):
         me = random.randint(0, 2)
         message = repsonses[key[me][answer]]
         thing = f"You chose: {game[answer]}\nI chose: {game[me]}.\n{message}"
-        button.style = discord.ButtonStyle.red if message == repsonses[-1] else discord.ButtonStyle.green
+        if message == repsonses[1]:
+            button.style = discord.ButtonStyle.green
+            self.embed.color = discord.Color.green()
+        elif message == repsonses[-1]:
+            button.style = discord.ButtonStyle.danger
+            self.embed.color = discord.Color.red()
         for i in self.children:
             i.disabled = True
         self.embed.description = thing
         await interaction.response.edit_message(embed=self.embed, view=self)
+        self.stop()
 
     @discord.ui.button(label='Rock', emoji='\U0001faa8', style=discord.ButtonStyle.secondary, row=1)
     async def game_rock(self, button: discord.Button, interaction: discord.Interaction):
@@ -376,8 +382,10 @@ class Fun(commands.Cog):
             return
         await message.clear_reactions()
 
-    @commands.command()
-    async def rps(self, ctx: AvimetryContext):
+    @commands.command(aliases=['rps'])
+    @commands.max_concurrency(1, commands.BucketType.channel)
+    @commands.cooldown(2, 5, commands.BucketType.member)
+    async def rockpaperscissors(self, ctx: AvimetryContext):
         embed = discord.Embed(title='Rock Paper Scissors', description='Who will win?')
         await ctx.send(embed=embed, view=RockPaperScissorGame(timeout=20, ctx=ctx, member=ctx.author, embed=embed))
 

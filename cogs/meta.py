@@ -193,7 +193,9 @@ class Meta(commands.Cog):
         try:
             timezone = ctx.cache.users[member.id]["timezone"]
         except KeyError:
-            return await ctx.send("This user does not have a timezone setup.")
+            if member == ctx.author:
+                return await ctx.send("You don't have a timezone setup yet. Use {prefix}time set <timezone>.")
+            return await ctx.send("This user does not have a timezone setup. Use {prefix}time set <timezone>.")
         timezone = pytz.timezone(timezone)
         time = datetime.datetime.now(timezone)
         format_time = time.strftime("%A, %B %d at %I:%M %p")

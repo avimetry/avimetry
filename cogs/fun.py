@@ -37,6 +37,14 @@ class AkinatorGameView(discord.ui.View):
         self.member = member
         self.embed = embed
 
+    async def stop(self, *args, **kwargs):
+        await self.akiclient.close()
+        await self.message.edit(*args, **kwargs, view=None)
+
+    async def on_timeout(self):
+        self.embed.description = 'Game ended due to timeout.'
+        await self.stop(embed=self.embed)
+
     async def interaction_check(self, interaction):
         if interaction.user == self.member:
             return True
@@ -48,7 +56,7 @@ class AkinatorGameView(discord.ui.View):
             await self.akiclient.win()
             self.embed.description = 'Game stopped.'
             await interaction.response.edit_message(embed=self.embed, view=None)
-            self.stop()
+            await self.stop()
         elif answer == 'back':
             try:
                 next = await self.akiclient.back()
@@ -71,7 +79,7 @@ class AkinatorGameView(discord.ui.View):
             )
             embed.set_image(url=client.first_guess["absolute_picture_path"])
             await interaction.response.edit_message(embed=embed, view=None)
-            self.stop()
+            await self.stop()
 
     @discord.ui.button(label='Yes', style=discord.ButtonStyle.success, row=1)
     async def game_yes(self, button: discord.Button, interaction: discord.Interaction):
@@ -103,11 +111,19 @@ class AkinatorGameView(discord.ui.View):
 
 
 class RockPaperScissorGame(discord.ui.View):
-    def __init__(self, timeout=20, *, ctx, member, embed):
+    def __init__(self, timeout=8, *, ctx, member, embed):
         super().__init__(timeout=timeout)
         self.ctx = ctx
         self.member = member
         self.embed = embed
+
+    async def stop(self):
+        for i in self.children:
+            i.disabled = True
+        await self.message.edit(view=self)
+
+    async def on_timeout(self):
+        await self.stop()
 
     async def interaction_check(self, interaction):
         if interaction.user == self.member:
@@ -158,14 +174,25 @@ class RockPaperScissorGame(discord.ui.View):
         button.style = discord.ButtonStyle.success
 
 
+class CookieView(discord.ui.View):
+    def __init__(self, timeout, ctx):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+        self.winner = None
+
+    async def on_timeout(self):
+        await self.message.edit(embed=None, content='Nobody got the cookie', view=None)
+
+    @discord.ui.button(emoji='🍪')
+    async def cookie(self, button, interaction):
+        self.winner = interaction.user
+        button.disabled = True
+        self.stop()
+
+
 class Things(commands.FlagConverter):
     mode: str = 'en'
     child: bool = True
-
-
-class TestFlags(commands.FlagConverter, prefix='--', delimiter=' '):
-    size: int = 512
-    format: str = 'png'
 
 
 class Fun(commands.Cog):
@@ -315,20 +342,47 @@ class Fun(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(
-        brief=(
-            "Get the cookie! (If you mention a user, I will listen to you and the member that you mentioned.)"),
+        brief="Get the cookie!",
         aliases=["\U0001F36A", "vookir", "kookie"]
         )
     @commands.cooldown(5, 10, commands.BucketType.member)
     @commands.max_concurrency(2, commands.BucketType.channel)
-    async def cookie(self, ctx: AvimetryContext, member: typing.Optional[discord.Member] = None):
+    async def cookie(self, ctx: AvimetryContext):
+        cookie_embed = discord.Embed(
+            title="Get the cookie!",
+            description="Get ready to grab the cookie!")
+        cd_cookie = await ctx.send(embed=cookie_embed)
+        await asyncio.sleep(random.randint(1, 12))
+        cookie_embed.title = "GO!"
+        cookie_embed.description = "GET THE COOKIE NOW!"
+        view = CookieView(10, ctx)
+        view.message = cd_cookie
+        await cd_cookie.edit(embed=cookie_embed, view=view)
+        with Timer() as timer:
+            await view.wait()
+        if view.winner:
+            cookie_embed.title = f"Nice Job {view.winner}!"
+            if timer.total_time > 1:
+                final_time = f'`{timer.total_time:,.2f}s`'
+            else:
+                final_time = f'`{timer.total_time*1000:,.2f}ms`'
+            cookie_embed.description = f"{view.winner} got the cookie in {final_time}"
+            await cd_cookie.edit(embed=cookie_embed, view=None)
+
+    @commands.command(
+        brief=(
+            "Get the cookie!"),
+        aliases=["old-cookie"]
+    )
+    @commands.cooldown(5, 10, commands.BucketType.member)
+    @commands.max_concurrency(2, commands.BucketType.channel)
+    async def old_cookie(self, ctx: AvimetryContext, member: typing.Optional[discord.Member] = None):
         if member == ctx.author:
             return await ctx.send("You can't play against yourself.")
         cookie_embed = discord.Embed(
             title="Get the cookie!",
             description="Get ready to grab the cookie!")
         cd_cookie = await ctx.send(embed=cookie_embed)
-        await cd_cookie.edit(embed=cookie_embed)
         await asyncio.sleep(random.randint(1, 12))
         cookie_embed.title = "GO!"
         cookie_embed.description = "GET THE COOKIE NOW!"
@@ -372,22 +426,13 @@ class Fun(commands.Cog):
                 await cd_cookie.remove_reaction("\U0001F36A", ctx.me)
                 return await cd_cookie.edit(embed=cookie_embed)
 
-    async def remove(self, message: discord.Message, emoji, user, perm: bool):
-        if not perm:
-            return
-        await message.remove_reaction(emoji, user)
-
-    async def clear(self, message: discord.Message, perm: bool):
-        if not perm:
-            return
-        await message.clear_reactions()
-
     @commands.command(aliases=['rps'])
     @commands.max_concurrency(1, commands.BucketType.channel)
     @commands.cooldown(2, 5, commands.BucketType.member)
     async def rockpaperscissors(self, ctx: AvimetryContext):
         embed = discord.Embed(title='Rock Paper Scissors', description='Who will win?')
-        await ctx.send(embed=embed, view=RockPaperScissorGame(timeout=20, ctx=ctx, member=ctx.author, embed=embed))
+        view = RockPaperScissorGame(timeout=20, ctx=ctx, member=ctx.author, embed=embed)
+        view.message = await ctx.send(embed=embed, view=view)
 
     @commands.command(aliases=['aki'])
     async def akinator(self, ctx: AvimetryContext, *, flags: Things):
@@ -398,13 +443,7 @@ class Fun(commands.Cog):
                 return await ctx.send('Child mode can only be disabled in NSFW channels.')
             embed = discord.Embed(title='Akinator', description=f'{akiclient.step+1}. {game}')
         view = AkinatorGameView(ctx=ctx, akiclient=akiclient, member=ctx.author, embed=embed)
-        await ctx.send(embed=embed, view=view)
-
-    @commands.command()
-    async def avatar2(self, ctx: AvimetryContext, member: discord.Member, *, flags: TestFlags):
-        member = member or ctx.author
-        av = member.avatar.replace(size=flags.size, format=flags.format)
-        await ctx.send(av)
+        view.message = await ctx.send(embed=embed, view=view)
 
     @commands.command(
         brief="Check if a person is compatible with another person."

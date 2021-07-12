@@ -20,8 +20,52 @@ import asyncio
 import discord
 import datetime
 import contextlib
+import re
 
 from discord.ext import commands
+
+
+class TrashView(discord.ui.View):
+    def __init__(self, timeout, ctx):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+
+    async def interaction_check(self, interaction):
+        if interaction.user != self.ctx.author:
+            return await interaction.response.send_message('no', ephemeral=True)
+        return True
+
+    @discord.ui.button(emoji='<:redtick:777096756865269760>', style=discord.ButtonStyle.danger)
+    async def trash(self, button, interaction):
+        await self.message.delete()
+
+
+class ConfirmView(discord.ui.View):
+    def __init__(self, timeout: int, ctx: "AvimetryContext"):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+        self.value = None
+
+    async def stop(self):
+        for button in self.children:
+            button.disabled = True
+        await self.message.edit(view=self)
+        super().stop()
+
+    async def interaction_check(self, interaction):
+        if interaction.user != self.ctx.author:
+            return await interaction.response.send_message('This is not yours.', ephemeral=True)
+        return True
+
+    @discord.ui.button(label='Yes', style=discord.ButtonStyle.green)
+    async def yes(self, button, interaction):
+        self.value = True
+        await self.stop()
+
+    @discord.ui.button(label='No', style=discord.ButtonStyle.red)
+    async def no(self, button, interaction):
+        self.value = False
+        await self.stop()
 
 
 class AvimetryContext(commands.Context):
@@ -35,6 +79,15 @@ class AvimetryContext(commands.Context):
     @property
     def cache(self):
         return self.bot.cache
+
+    @property
+    def clean_prefix(self):
+        prefix = re.sub(
+            f"<@!?{self.bot.user.id}>", f"@{self.me.display_name}", self.prefix
+        )
+        if prefix.endswith("  "):
+            prefix = f"{prefix.strip()} "
+        return prefix
 
     @property
     def content(self):
@@ -61,6 +114,22 @@ class AvimetryContext(commands.Context):
         )
         await self.send(embed=embed)
 
+    async def determine_color(self):
+        base = self.author.color
+        data = self.cache.users.get(self.author.id)
+        try:
+            color = data.get('color')
+            if not color:
+                color = base
+        except AttributeError:
+            color = self.author.color
+        if color == discord.Color(0):
+            if await self.bot.is_owner(self.author):
+                color = discord.Color(0x01b9c0)
+            else:
+                color = discord.Color(0x2F3136)
+        return color
+
     async def send(self, content=None, embed: discord.Embed = None, **kwargs):
         if content:
             content = str(content)
@@ -74,16 +143,7 @@ class AvimetryContext(commands.Context):
                 )
                 embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
             if not embed.color:
-                cache = self.cache.users.get(self.author.id)
-                db_color = cache.get('color')
-                if db_color:
-                    color = db_color
-                elif self.author.color == discord.Color(0):
-                    if await self.bot.is_owner(self.author):
-                        color = discord.Color(0x01b9c0)
-                    else:
-                        color = discord.Color(0x2F3136)
-                embed.color = color
+                embed.color = await self.determine_color()
         if self.message.id in self.bot.command_cache and self.message.edited_at:
             edited_message = self.bot.command_cache[self.message.id]
             try:
@@ -113,35 +173,22 @@ class AvimetryContext(commands.Context):
         self, message=None, embed: discord.Embed = None, confirm_message=None, *,
         timeout=60, delete_after=True, raw=False
     ):
-        emojis = self.bot.emoji_dictionary
-        yes_no = [emojis['green_tick'], emojis['red_tick']]
-        check_message = confirm_message or f"React with {yes_no[0]} to accept, or {yes_no[1]} to deny."
+
+        view = ConfirmView(timeout=timeout, ctx=self)
+        check_message = confirm_message or 'Press "yes" to accept, or press "no" to deny.'
         if raw is True:
-            send = await self.send_raw(content=message, embed=embed)
+            send = await self.send_raw(content=message, embed=embed, view=view)
         elif message:
             message = f"{message}\n\n{check_message}"
-            send = await self.send(message)
+            send = await self.send(message, view=view)
         elif embed:
             embed.description = f"{embed.description}\n\n{check_message}"
-            send = await self.send(embed=embed)
-        for emoji in yes_no:
-            await send.add_reaction(emoji)
-
-        def check(reaction, user):
-            return str(reaction.emoji) in yes_no and user == self.author and reaction.message.id == send.id
-
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=timeout)
-        except asyncio.TimeoutError:
-            confirm = False
-        else:
-            if str(reaction.emoji) == yes_no[0]:
-                confirm = True
-            if str(reaction.emoji) == yes_no[1]:
-                confirm = False
+            send = await self.send(embed=embed, view=view)
+        view.message = send
+        await view.wait()
         if delete_after:
             await send.delete()
-        return confirm
+        return view.value
 
     async def prompt(
         self, message=None, embed: discord.Embed = None, *,
@@ -170,17 +217,9 @@ class AvimetryContext(commands.Context):
             await send.delete()
         return confirm
 
-    async def trash(self, *args, **kwargs):
-        emoji = self.bot.emoji_dictionary["red_tick"]
-        message = await self.send(*args, **kwargs)
-        await message.add_reaction(emoji)
-
-        def check(reaction, user):
-            return str(reaction.emoji) in emoji and user == self.author and reaction.message.id == message.id
-
-        reaction, user = await self.bot.wait_for("reaction_add", check=check)
-        if str(reaction.emoji) == emoji:
-            await message.delete()
+    async def can_delete(self, *args, **kwargs):
+        view = TrashView(timeout=None, ctx=self)
+        view.message = await self.send(*args, **kwargs, view=view)
 
 
 def setup(bot):

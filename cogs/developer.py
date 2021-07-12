@@ -213,7 +213,7 @@ class Owner(commands.Cog):
             return m.author == self.bot.user
         perms = ctx.channel.permissions_for(ctx.me).manage_messages
         purged = await ctx.channel.purge(limit=amount, check=check, bulk=perms)
-        await ctx.trash(f'Purged {len(purged)} messages')
+        await ctx.can_delete(f'Purged {len(purged)} messages')
 
     @dev.group(invoke_without_command=True)
     async def errors(self, ctx: AvimetryContext):

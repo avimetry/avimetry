@@ -136,7 +136,7 @@ class BotInfo(commands.Cog, name="Bot Info"):
                     "is the invite link."
                 ),
             )
-            invite_embed.set_thumbnail(url=self.bot.user.avatar_url)
+            invite_embed.set_thumbnail(url=self.bot.user.avatar.url)
             await ctx.send(embed=invite_embed)
         elif bot.bot:
             invite_embed = discord.Embed(title=f"{bot.name} Invite")

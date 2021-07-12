@@ -27,36 +27,48 @@ from utils import AvimetryBot
 
 class AvimetryHelp(commands.HelpCommand):
     async def get_bot_perms(self, command):
-        user_perms = []
-        try:
-            check = command.checks[1]
-            await check(1)
-        except Exception as e:
-            frames = [*traceback.walk_tb(e.__traceback__)]
-            last_trace = frames[-1]
-            frame = last_trace[0]
+        bot_perms = []
+        if extras := command.extras.get('bot_perms'):
+            if isinstance(extras, str):
+                bot_perms.append(extras)
+            elif isinstance(extras, list):
+                bot_perms.extend(extras)
+        else:
             try:
-                for i in frame.f_locals['perms']:
-                    user_perms.append(i)
-                return ", ".join(user_perms).replace("_", " ").title()
-            except KeyError:
-                return "Permissions not found"
+                check = command.checks[1]
+                await check(1)
+            except Exception as e:
+                frames = [*traceback.walk_tb(e.__traceback__)]
+                last_trace = frames[-1]
+                frame = last_trace[0]
+                try:
+                    for i in frame.f_locals['perms']:
+                        bot_perms.append(i)
+                except KeyError:
+                    return "Send Messages"
+        return ", ".join(bot_perms).replace("_", " ").title()
 
     async def get_user_perms(self, command):
         user_perms = []
-        try:
-            check = command.checks[0]
-            await check(0)
-        except Exception as e:
-            frames = [*traceback.walk_tb(e.__traceback__)]
-            last_trace = frames[-1]
-            frame = last_trace[0]
+        if extras := command.extras.get('user_perms'):
+            if isinstance(extras, str):
+                user_perms.append(extras)
+            elif isinstance(extras, list):
+                user_perms.extend(extras)
+        else:
             try:
-                for i in frame.f_locals['perms']:
-                    user_perms.append(i)
-                return ", ".join(user_perms).replace("_", " ").title()
-            except KeyError:
-                return "Permissions not found"
+                check = command.checks[0]
+                await check(0)
+            except Exception as e:
+                frames = [*traceback.walk_tb(e.__traceback__)]
+                last_trace = frames[-1]
+                frame = last_trace[0]
+                try:
+                    for i in frame.f_locals['perms']:
+                        user_perms.append(i)
+                except KeyError:
+                    return "Send Messages"
+        return ", ".join(user_perms).replace("_", " ").title()
 
     def get_cooldown(self, command):
         try:
@@ -144,13 +156,13 @@ class AvimetryHelp(commands.HelpCommand):
     async def send_group_help(self, group):
         embed = discord.Embed(
             title=f"Commands in group {group.qualified_name.title()}",
-            description=f"{group.short_doc}" or "Description was not provided")
+            description=f"{group.short_doc}" or "Description not found.")
         embed.add_field(
             name="Base command usage",
             value=f"`{self.context.clean_prefix}{group.qualified_name} {group.signature}`")
         if group.aliases:
             embed.add_field(
-                name="Command Aliases",
+                name="Base command aliases",
                 value=", ".join(group.aliases),
                 inline=False)
         try:
@@ -192,16 +204,16 @@ class AvimetryHelp(commands.HelpCommand):
             title=f"Command: {command.qualified_name}")
 
         embed.add_field(
-            name="Command Usage",
+            name="Command usage",
             value=f"`{self.context.clean_prefix}{command.name} {command.signature}`")
         if command.aliases:
             embed.add_field(
-                name="Command Aliases",
+                name="Command aliases",
                 value=", ".join(command.aliases),
                 inline=False)
         embed.add_field(
             name="Description",
-            value=command.short_doc or "No help was provided.",
+            value=command.short_doc or "Description not found.",
             inline=False)
         try:
             can_run = await self.bot.can_run(self.ctx)

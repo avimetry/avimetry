@@ -53,7 +53,7 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
         await command(ctx)
 
     @Feature.Command(name="jishaku", aliases=["jsk", "jks", "bishaku", "bsk", "bks"], hidden=JISHAKU_HIDE,
-                     invoke_without_command=True, ignore_extra=False)
+                     invoke_without_command=True, ignore_extra=False, extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def jsk(self, ctx: AvimetryContext):
         summary = [
             f"Jishaku `v{jishaku.__version__}`, discord.py `v{discord.__version__}`, "

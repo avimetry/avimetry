@@ -46,13 +46,15 @@ class Owner(commands.Cog):
 
     @commands.group(
         invoke_without_command=True,
-        brief="Developer commands only."
+        brief="Developer commands only.",
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def dev(self, ctx: AvimetryContext):
         await ctx.send_help("dev")
 
     @dev.command(
-        brief="Load module(s)", aliases=["l"]
+        brief="Load module(s)", aliases=["l"],
+        extras=dict(user_perms="owner", bot_perms="send_messages")
         )
     async def load(self, ctx: AvimetryContext, module: CogConverter):
         reload_list = []
@@ -66,7 +68,8 @@ class Owner(commands.Cog):
         await ctx.send(embed=embed, delete_after=15)
 
     @dev.command(
-        brief="Unload module(s)", aliases=["u"]
+        brief="Unload module(s)", aliases=["u"],
+        extras=dict(user_perms="owner", bot_perms="send_messages")
         )
     async def unload(self, ctx: AvimetryContext, module: CogConverter):
         unload_list = []
@@ -80,7 +83,8 @@ class Owner(commands.Cog):
         await ctx.send(embed=embed, delete_after=15)
 
     @dev.command(
-        brief="Reload module(s)", aliases=["r"]
+        brief="Reload module(s)", aliases=["r"],
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def reload(self, ctx: AvimetryContext, module: CogConverter):
         reload_list = []
@@ -94,7 +98,10 @@ class Owner(commands.Cog):
         embed = discord.Embed(title="Reload", description=description)
         await ctx.send(embed=embed, delete_after=15)
 
-    @dev.command(brief="Pulls from GitHub and then reloads all modules")
+    @dev.command(
+        brief="Pulls from GitHub and then reloads all modules",
+        extras=dict(user_perms="owner", bot_perms="send_messages")
+        )
     async def sync(self, ctx: AvimetryContext):
         sync_embed = discord.Embed(
             title="Syncing with GitHub", description="Please Wait..."
@@ -129,7 +136,9 @@ class Owner(commands.Cog):
         sync_embed.add_field(name="Reloaded Modules", value=value)
         await edit_sync.edit(embed=sync_embed, delete_after=15)
 
-    @dev.command(brief="Reboot the bot")
+    @dev.command(
+        brief="Reboot the bot",
+        extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def reboot(self, ctx: AvimetryContext):
         sm = discord.Embed(
             description="Are you sure you want to reboot?"
@@ -140,12 +149,16 @@ class Owner(commands.Cog):
         if not conf:
             await ctx.send("Reboot Aborted", delete_after=5)
 
-    @dev.command(brief="Evaluate python code.")
+    @dev.command(
+        brief="Evaluate python code.",
+        extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def eval(self, ctx: AvimetryContext, *, code: codeblock_converter):
         jsk = self.bot.get_command("jsk py")
         await jsk(ctx, argument=code)
 
-    @dev.command(brief="Leaves a server.")
+    @dev.command(
+        brief="Leaves a server.",
+        extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def leave(self, ctx: AvimetryContext, guild: discord.Guild):
         conf = await ctx.confirm(f"Are you sure you want me to leave {guild.name} ({guild.id})?")
         if conf:
@@ -156,7 +169,8 @@ class Owner(commands.Cog):
     @dev.group(
         invoke_without_command=True,
         brief="Blacklist users from the bot",
-        aliases=["bl"]
+        aliases=["bl"],
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def blacklist(self, ctx: AvimetryContext):
         bl_users = ctx.cache.blacklist.keys()
@@ -170,7 +184,8 @@ class Owner(commands.Cog):
     @blacklist.command(
         name="add",
         aliases=["a"],
-        brief="Adds a user to the global blacklist"
+        brief="Adds a user to the global blacklist",
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def blacklist_add(self, ctx: AvimetryContext, user: typing.Union[discord.User, discord.Member], *, reason):
         try:
@@ -193,7 +208,8 @@ class Owner(commands.Cog):
     @blacklist.command(
         name="remove",
         aliases=["r"],
-        brief="Remove a user from the blacklist."
+        brief="Remove a user from the blacklist.",
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def blacklist_remove(self, ctx: AvimetryContext, user: typing.Union[discord.User, discord.Member], *, reason):
         try:
@@ -206,7 +222,8 @@ class Owner(commands.Cog):
         await ctx.send(f"Unblacklisted {str(user)}")
 
     @dev.command(
-        brief="Cleans up bot messages only"
+        brief="Cleans up bot messages only",
+        extras=dict(user_perms="owner", bot_perms="send_messages")
     )
     async def cleanup(self, ctx: AvimetryContext, amount: int = 15):
         def check(m: discord.Message):
@@ -215,7 +232,7 @@ class Owner(commands.Cog):
         purged = await ctx.channel.purge(limit=amount, check=check, bulk=perms)
         await ctx.can_delete(f'Purged {len(purged)} messages')
 
-    @dev.group(invoke_without_command=True)
+    @dev.group(invoke_without_command=True, extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def errors(self, ctx: AvimetryContext):
         errors = await self.bot.pool.fetch('SELECT * FROM command_errors WHERE fixed = false')
         embed = discord.Embed(title="Errors")
@@ -228,7 +245,7 @@ class Owner(commands.Cog):
             embed.add_field(name='No errors found', value='Nice :)')
         await ctx.send(embed=embed)
 
-    @errors.command()
+    @errors.command(extras=dict(user_perms="owner", bot_perms="send_messages"))
     async def fix(self, ctx: AvimetryContext, error_id: int = None):
         if error_id is None:
             return await ctx.send_help("error")

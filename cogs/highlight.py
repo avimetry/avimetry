@@ -9,7 +9,6 @@ class Highlight(commands.Cog):
     def __init__(self, bot):
         self.bot: AvimetryBot = bot
 
-
     @commands.Cog.listener("on_message")
     async def on_message(self, message: discord.Message):
         if not message.guild:
